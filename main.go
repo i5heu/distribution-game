@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"html/template"
 	"log"
 	"net/http"
 	"time"
@@ -11,8 +10,10 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/", getRoot)
 	http.HandleFunc("/run", runJsCode)
+
+	fs := http.FileServer(http.Dir("./dist"))
+	http.Handle("/", fs)
 
 	err := http.ListenAndServe(":3333", nil)
 	if err != nil {
@@ -20,12 +21,6 @@ func main() {
 	} else {
 		log.Println("Server started on port 3333")
 	}
-}
-
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	// get Template
-	tmplt, _ := template.ParseFiles("index.html")
-	tmplt.Execute(w, nil)
 }
 
 func timeTrack(start time.Time, name string) {
@@ -46,7 +41,7 @@ func runJsCode(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	var jsCode = data["js"].(string)
+	var jsCode = data["code"].(string)
 
 	iso := v8.NewIsolate()
 	printfn := v8.NewFunctionTemplate(iso, func(info *v8.FunctionCallbackInfo) *v8.Value {

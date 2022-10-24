@@ -72,3 +72,30 @@ function getConfig() {
 
   return config;
 }
+
+document.getElementById("run").addEventListener("click", run);
+
+function run() {
+  const config = getConfig();
+  const code = editorInstance.getValue();
+
+  fetch("http://localhost:3333/run", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      code,
+      config,
+    }),
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      document.getElementById("result").innerText = JSON.stringify(
+        res,
+        null,
+        2
+      );
+      console.log(res);
+    });
+}
