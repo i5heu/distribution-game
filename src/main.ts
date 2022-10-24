@@ -60,3 +60,15 @@ function getStorageFromBrowser() {
   if (store) return JSON.parse(store);
   return null;
 }
+function getConfig() {
+  const configEl = document.getElementById("config");
+
+  const config: any = {}; //TODO fix type
+  for (const el of configEl.querySelectorAll("input")) {
+    const key = el.getAttribute("data-key");
+    const value = el.value;
+    config[key] = value;
+  }
+
+  return config;
+}

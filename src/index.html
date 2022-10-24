@@ -83,7 +83,7 @@
       }
 
       label {
-        display: inline-block;
+        display: block;
         border: 1px solid #fff;
         margin: 3px;
         padding: 3px;
@@ -121,13 +121,42 @@
         <div id="import">Import</div>
       </div>
       <div id="preview">
-        <label>Nodes: <input type="number" min="2" /></label>
-        <label>Msgs/s/node: <input type="number" min="1" /></label>
-        <label>Datasets: <input type="number" min="10" /></label>
-        <label>Seeds: <input type="number" min="1" /></label>
-        <label>Iterations: <input type="number" min="1" /></label>
-        <label>Timeout per Iteration: <input type="number" min="100" /></label>
+        <div id="config">
+          <label
+            >Nodes: <input data-key="nodes" type="number" min="2" value="500"
+          /></label>
+          <label
+            >Msgs/s/node:
+            <input data-key="msgs_s_node" type="number" min="1" value="10"
+          /></label>
+          <label
+            >Datasets:
+            <input data-key="datasets" type="number" min="10" value="500"
+          /></label>
+          <label
+            >new Dataset/s:
+            <input data-key="datasets_s" type="number" min="1" value="10"
+          /></label>
+          <label
+            >Seeds: <input data-key="seeds" type="number" min="1" value="3"
+          /></label>
+          <label
+            >Iterations:
+            <input data-key="iterations" type="number" min="1" value="3"
+          /></label>
+          <label
+            >Timeout per Iteration:
+            <input
+              data-key="timeout"
+              type="number"
+              min="100"
+              value="300"
+            />s</label
+          >
+        </div>
       </div>
+
+      <div id="result"></div>
     </div>
 
     <!-- Place this tag in your head or just before your close body tag. -->
