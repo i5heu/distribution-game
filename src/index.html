@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>distribution-game</title>
+    <style>
+      html,
+      body {
+        display: flex;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        max-height: 100vh;
+        background-color: black;
+        color: chartreuse;
+        font-family: "Courier New", Courier, monospace;
+      }
+      body {
+        display: grid;
+        grid-template-rows: 5em auto;
+        grid-template-columns: 50% 50%;
+        max-height: 100vh;
+        max-width: 100vw;
+      }
+      #editor,
+      body > div {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+      #head {
+        grid-column: 1 / 3;
+        background-color: #131313;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        padding: 5px;
+        gap: 5px;
+        box-sizing: border-box;
+      }
+      #head a {
+        color: #fff;
+        text-decoration: none;
+      }
+      #head .spacer {
+        margin-left: 3em;
+      }
+      #preview {
+        height: calc(100% - 2.3em);
+        overflow: hidden;
+      }
+
+      .actionButtons,
+      #fileTabs {
+        display: flex;
+        flex-direction: row;
+        gap: 1em;
+        align-items: center;
+        background-color: #131313;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        padding: 5px;
+        box-sizing: border-box;
+      }
+      .actionButtons > div,
+      #fileTabs > div {
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        height: 100%;
+        border: 1px solid #fff;
+        padding: 3px;
+      }
+      .actionButtons > div:hover,
+      #fileTabs .active {
+        background-color: #fff;
+        color: #131313;
+      }
+
+      label {
+        display: inline-block;
+        border: 1px solid #fff;
+        margin: 3px;
+        padding: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="head">
+      <img
+        src="https://i5heu.github.io/Faultier-CV/media/logo.png"
+        height="80"
+        alt=""
+      />
+      <h1>distribution-game</h1>
+      <div class="spacer"></div>
+      <a href="https://github.com/i5heu/Faultier-CV">Github</a>
+      <!-- Place this tag where you want the button to render. -->
+      <a
+        class="github-button"
+        href="https://github.com/i5heu/Faultier-CV"
+        data-size="large"
+        data-show-count="true"
+        aria-label="Star i5heu/Faultier-CV on GitHub"
+        >Star</a
+      >
+    </div>
+    <div id="left">
+      <div id="editor"></div>
+    </div>
+    <div>
+      <div class="actionButtons">
+        <div id="run">Run</div>
+        <div id="debug">debug</div>
+        <div id="save">Save</div>
+        <div id="import">Import</div>
+      </div>
+      <div id="preview">
+        <label>Nodes: <input type="number" min="2" /></label>
+        <label>Msgs/s/node: <input type="number" min="1" /></label>
+        <label>Datasets: <input type="number" min="10" /></label>
+        <label>Seeds: <input type="number" min="1" /></label>
+        <label>Iterations: <input type="number" min="1" /></label>
+        <label>Timeout per Iteration: <input type="number" min="100" /></label>
+      </div>
+    </div>
+
+    <!-- Place this tag in your head or just before your close body tag. -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+  </body>
+</html>
