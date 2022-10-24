@@ -99,3 +99,21 @@ function run() {
       console.log(res);
     });
 }
+
+const socket = new WebSocket("ws://localhost:3333/ws");
+socket.addEventListener("open", (event) => {
+  console.log("Sending message to server");
+
+  socket.send(
+    JSON.stringify({
+      data: "Hello Server! I am a client. I am sending you a message. I hope you get it.",
+    })
+  );
+});
+socket.addEventListener("close", (event) => {
+  console.log("Connection closed", event);
+});
+socket.addEventListener("message", (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Message from server ", data);
+});

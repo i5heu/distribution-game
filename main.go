@@ -2,24 +2,28 @@ package main
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 	v8 "rogchap.com/v8go"
 )
 
 func main() {
 	http.HandleFunc("/run", runJsCode)
+	http.HandleFunc("/ws", socketHandler)
 
 	fs := http.FileServer(http.Dir("./dist"))
 	http.Handle("/", fs)
 
 	err := http.ListenAndServe(":3333", nil)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		fmt.Println("ListenAndServe: ", err)
 	} else {
-		log.Println("Server started on port 3333")
+		fmt.Println("Server started on port 3333")
 	}
 }
 
@@ -95,4 +99,44 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 		w.Write([]byte(","))
 	}
 	w.Write(response)
+}
+
+type Message struct {
+	ThreadID    uuid.UUID       `json:"thread_id"`
+	MessageType string          `json:"type"`
+	Data        json.RawMessage `json:"data"`
+}
+
+var upgrader = websocket.Upgrader{}
+
+func socketHandler(w http.ResponseWriter, r *http.Request) {
+	// Upgrade our raw HTTP connection to a websocket based one
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("Error during connection upgradation:", err)
+		return
+	}
+	defer conn.Close()
+
+	messageCount := -1
+
+	// The event loop
+	for {
+		messageCount++
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Error().AnErr("Error during message reading", err)
+			break
+		}
+
+		data := Message{}
+		err = json.Unmarshal(message, &data)
+		if err != nil {
+			log.Error().Err(err).Msg("Error during message unmarshalling")
+			conn.WriteMessage(messageType, []byte("Error during message unmarshalling"))
+			break
+		}
+
+		conn.WriteMessage(messageType, []byte("{\"data\":\"Working\"}"))
+	}
 }
