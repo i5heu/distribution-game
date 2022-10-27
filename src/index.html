@@ -123,10 +123,10 @@
       <div id="preview">
         <div id="config">
           <label
-            >Nodes: <input data-key="nodes" type="number" min="2" value="150"
+            >Nodes: <input data-key="nodes" type="number" min="2" value="1500"
           /></label>
           <label
-            >Msgs/s/node:
+            >Max Msgs/s/node:
             <input data-key="msgs_s_node" type="number" min="1" value="10"
           /></label>
           <label
@@ -153,6 +153,9 @@
               value="300"
             />s</label
           >
+        </div>
+        <div id="liveDashboard">
+          <div>Global Messages per Second: <span id="msps"></span></div>
         </div>
         <pre id="result"></pre>
       </div>

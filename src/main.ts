@@ -108,6 +108,10 @@ socket.addEventListener("close", (event) => {
 socket.addEventListener("message", (event) => {
   const data = JSON.parse(event.data);
   console.log("Message from server ", data);
+
+  if (data.type == "msps") {
+    document.getElementById("msps").innerText = data.message_per_second;
+  }
 });
 
 interface Config {
