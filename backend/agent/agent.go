@@ -9,6 +9,14 @@ import (
 
 func New(module *wasmer.Module, store *wasmer.Store) {
 
+	print := wasmer.NewFunction(
+		store,
+		wasmer.NewFunctionType(wasmer.NewValueTypes(wasmer.I32, wasmer.I32), wasmer.NewValueTypes()),
+		func(args []wasmer.Value) ([]wasmer.Value, error) {
+			return nil, nil
+		},
+	)
+
 	wasiEnv, _ := wasmer.NewWasiStateBuilder("wasi-program").
 		// Choose according to your actual situation
 		// Argument("--foo").
@@ -16,6 +24,12 @@ func New(module *wasmer.Module, store *wasmer.Store) {
 		// MapDirectory("./", ".").
 		Finalize()
 	importObject, err := wasiEnv.GenerateImportObject(store, module)
+	importObject.Register(
+		"env",
+		map[string]wasmer.IntoExtern{
+			"hostPrint": print,
+		},
+	)
 
 	instance, err := wasmer.NewInstance(module, importObject)
 
@@ -31,7 +45,11 @@ func New(module *wasmer.Module, store *wasmer.Store) {
 
 	// // repeat a 1000 times
 	for i := 0; i < 100; i++ {
-		values, err := addOne(2)
+		_, err := instance.Exports.GetMemory("memory")
+		if err != nil {
+			panic(fmt.Sprintln("Failed to get the `memory` export:", err))
+		}
+		values, err := addOne(2, 323)
 
 		if err != nil {
 			panic(fmt.Sprintln("Failed to call the `add_one` function:", err))
