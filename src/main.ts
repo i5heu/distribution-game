@@ -60,18 +60,7 @@ function getStorageFromBrowser() {
   if (store) return JSON.parse(store);
   return null;
 }
-function getConfig() {
-  const configEl = document.getElementById("config");
 
-  const config: any = {}; //TODO fix type
-  for (const el of configEl.querySelectorAll("input")) {
-    const key = el.getAttribute("data-key");
-    const value = el.value;
-    config[key] = value;
-  }
-
-  return config;
-}
 
 document.getElementById("run").addEventListener("click", run);
 
@@ -79,7 +68,7 @@ function run() {
   const config = getConfig();
   const code = editorInstance.getValue();
 
-  fetch("http://localhost:3333/run", {
+  fetch("/run", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -100,7 +89,7 @@ function run() {
     });
 }
 
-const socket = new WebSocket("ws://localhost:3333/ws");
+const socket = new WebSocket("ws:///ws");
 socket.addEventListener("open", (event) => {
   console.log("Sending message to server");
 
@@ -117,3 +106,39 @@ socket.addEventListener("message", (event) => {
   const data = JSON.parse(event.data);
   console.log("Message from server ", data);
 });
+
+interface Config {
+  nodes: number;
+  msgs_s_node: number;
+  datasets: number;
+  datasets_s: number;
+  seeds: number;
+  iterations: number;
+  timeout: number;
+}
+
+function getConfig() : Config | Error {
+  const configEl = document.getElementById("config");
+
+  const config: Config = {
+    nodes: 0,
+    msgs_s_node: 0,
+    datasets: 0,
+    datasets_s: 0,
+    seeds: 0,
+    iterations: 0,
+    timeout: 0,
+  };
+  for (const el of configEl.querySelectorAll("input")) {
+    const key = el.getAttribute("data-key");
+    const value = parseInt(el.value);
+    if (typeof value !== "number" || isNaN(value)) throw new Error("Invalid value");
+    if ((config as any)[key] === undefined) throw new Error("Invalid key");
+    
+    (config as any)[key] = value;
+  }
+
+  return config;
+}
+
+console.log(getConfig());

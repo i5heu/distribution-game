@@ -2,7 +2,6 @@ package agent
 
 import (
 	"encoding/json"
-	"net/http"
 	"time"
 
 	v8 "rogchap.com/v8go"
@@ -17,19 +16,19 @@ func New(agentID string, jsCode string) {
 			"time": time.Now().Format(time.RFC3339),
 		})
 		if err != nil {
-			respondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+			// helper.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 			return nil
 		}
 
 		val, err := v8.NewValue(iso, data)
 		if err != nil {
-			respondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+			// helper.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 			return nil
 		}
-		respondWithJSON(w, http.StatusOK, map[string]interface{}{
-			"msg":  info.Args()[0].String(),
-			"time": time.Now().Format(time.RFC3339),
-		})
+		// helper.RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+		// 	"msg":  info.Args()[0].String(),
+		// 	"time": time.Now().Format(time.RFC3339),
+		// })
 
 		return val
 	})
@@ -37,7 +36,10 @@ func New(agentID string, jsCode string) {
 	global.Set("test", printfn)
 	ctx := v8.NewContext(iso, global)
 
-	_, err = ctx.RunScript(jsCode, "main.js") // execute some JS code
+	_, err := ctx.RunScript(jsCode, "main.js") // execute some JS code
+	if err != nil {
+		// helper.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+	}
 }
 
 func interfaceToString(data interface{}) (string, error) {

@@ -3,20 +3,21 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"main/agent"
+	"main/helper"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
-	v8 "rogchap.com/v8go"
 )
 
 func main() {
-	http.HandleFunc("/run", runJsCode)
+	http.HandleFunc("/run", runSimulator)
 	http.HandleFunc("/ws", socketHandler)
 
-	fs := http.FileServer(http.Dir("./dist"))
+	fs := http.FileServer(http.Dir("../dist"))
 	http.Handle("/", fs)
 
 	err := http.ListenAndServe(":3333", nil)
@@ -32,39 +33,39 @@ func timeTrack(start time.Time, name string) {
 	log.Printf("%s took %s", name, elapsed)
 }
 
-func runJsCode(w http.ResponseWriter, r *http.Request) {
-	defer timeTrack(time.Now(), "runJsCode")
+type Config struct {
+	Nodes      int `json:"nodes"`
+	MsgsSNode  int `json:"msgs_s_node"`
+	Datasets   int `json:"datasets"`
+	DatasetsS  int `json:"datasets_s"`
+	Seeds      int `json:"seeds"`
+	Iterations int `json:"iterations"`
+	Timeout    int `json:"timeout"`
+}
+
+type RunSimulator struct {
+	Config Config `json:"config"`
+	Code   string `json:"code"`
+}
+
+func runSimulator(w http.ResponseWriter, r *http.Request) {
+	defer timeTrack(time.Now(), "Run Simulator")
 	w.Write([]byte("["))
 	defer w.Write([]byte("]"))
 
 	// get json data from post request
 	decoder := json.NewDecoder(r.Body)
-	var data map[string]interface{}
+	var data RunSimulator
 	err := decoder.Decode(&data)
 	if err != nil {
-		panic(err)
+		helper.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 	}
 
-	var jsCode = data["code"].(string)
+	var jsCode = data.Code
 
-	iso := v8.NewIsolate()
-
-	if err != nil {
-		//return err
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+	for i := 0; i < data.Config.Nodes; i++ {
+		go agent.New(uuid.New().String(), jsCode)
 	}
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	if w.Header().Get("Content-Type") == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-	} else {
-		w.Write([]byte(","))
-	}
-	w.Write(response)
 }
 
 type Message struct {
