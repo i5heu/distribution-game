@@ -2,7 +2,9 @@ package helper
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"time"
 )
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -15,4 +17,9 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 		w.Write([]byte(","))
 	}
 	w.Write(response)
+}
+
+func TimeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
 }
