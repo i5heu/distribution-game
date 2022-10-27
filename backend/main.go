@@ -4,18 +4,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"main/agent"
-	"main/helper"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
+	v8 "rogchap.com/v8go"
 )
 
+type HandlerChanel struct {
+	MsgPerSecondChanel chan int
+	//whatever
+}
+
 func main() {
-	http.HandleFunc("/run", runSimulator)
-	http.HandleFunc("/ws", socketHandler)
+
+	runSimulatorInst := &HandlerChanel{
+		MsgPerSecondChanel: make(chan int, 300),
+	}
+
+	http.HandleFunc("/run", runSimulatorInst.runSimulator)
+	http.HandleFunc("/ws", runSimulatorInst.socketHandler)
 
 	fs := http.FileServer(http.Dir("../dist"))
 	http.Handle("/", fs)
@@ -48,26 +59,61 @@ type RunSimulator struct {
 	Code   string `json:"code"`
 }
 
-func runSimulator(w http.ResponseWriter, r *http.Request) {
-	defer timeTrack(time.Now(), "Run Simulator")
-	w.Write([]byte("["))
-	defer w.Write([]byte("]"))
-
-	// get json data from post request
+func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var data RunSimulator
 	err := decoder.Decode(&data)
 	if err != nil {
-		helper.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
+		panic(err)
 	}
 
-	var jsCode = data.Code
+	defer func() {
+		r := recover()
+		if err, ok := r.(error); ok {
+			fmt.Println("Recovered", err)
+		}
+	}()
 
+	defer timeTrack(time.Now(), "Run Simulator")
+
+	var jsCode = data.Code
+	processors := runtime.NumCPU()
+
+	// create a new Isolate with the number of available CPUs
+	isos := make([]*v8.Isolate, processors)
+	for i := 0; i < processors; i++ {
+		isos[i] = v8.NewIsolate()
+	}
+
+	indexIsos := 0
 	for i := 0; i < data.Config.Nodes; i++ {
-		go agent.New(uuid.New().String(), jsCode)
+		agent.New(uuid.New().String(), jsCode, isos[indexIsos], h.MsgPerSecondChanel)
+		indexIsos++
+		if indexIsos == processors {
+			indexIsos = 0
+		}
 	}
 }
 
+func (h *HandlerChanel) messageCounter(conn *websocket.Conn) {
+	count := 0
+	unixtime := time.Now().Unix()
+	unixtimeTmp := unixtime
+	for el := range h.MsgPerSecondChanel {
+		count += el
+		if time.Now().Unix() > unixtimeTmp {
+			fmt.Println("Messages per second: ", count)
+			conn.WriteJSON(MessageMessagePerSecond{Type: "msps", MessagePerSecond: count})
+			unixtimeTmp = time.Now().Unix()
+			count = 0
+		}
+	}
+}
+
+type MessageMessagePerSecond struct {
+	Type             string `json:"type"`
+	MessagePerSecond int    `json:"message_per_second"`
+}
 type Message struct {
 	ThreadID    uuid.UUID       `json:"thread_id"`
 	MessageType string          `json:"type"`
@@ -76,7 +122,7 @@ type Message struct {
 
 var upgrader = websocket.Upgrader{}
 
-func socketHandler(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerChanel) socketHandler(w http.ResponseWriter, r *http.Request) {
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -84,6 +130,7 @@ func socketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+	go h.messageCounter(conn)
 
 	messageCount := -1
 

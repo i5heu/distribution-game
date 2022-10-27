@@ -89,7 +89,10 @@ function run() {
     });
 }
 
-const socket = new WebSocket("ws:///ws");
+var url = new URL('/ws', window.location.href);
+url.protocol = url.protocol.replace('http', 'ws');
+const socket = new WebSocket(url.href);
+
 socket.addEventListener("open", (event) => {
   console.log("Sending message to server");
 
