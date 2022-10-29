@@ -6,8 +6,8 @@ const store: Store = getStorageFromBrowser()
   : defaults;
 
 const editorInstance = editor.create(document.getElementById("editor"), {
-  value: store.javascript,
-  language: "javascript",
+  value: store.golang,
+  language: "golang",
   theme: "vs-dark",
 });
 window.onresize = function () {
@@ -19,6 +19,7 @@ console.log("Hello World");
 let loading = false;
 editorInstance.getModel().onDidChangeContent((e) => {
   if (loading) return;
+  store.golang = editorInstance.getValue();
   loading = true;
   setTimeout(() => {
     saveStorageInBrowser();
@@ -52,6 +53,7 @@ document.getElementById("import").addEventListener("click", () => {
 });
 
 function saveStorageInBrowser() {
+  console.log("Saving", store);
   localStorage.setItem("store", JSON.stringify(store));
 }
 

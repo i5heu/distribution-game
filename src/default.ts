@@ -1,7 +1,7 @@
 export type Store = {
-  javascript: string;
+  golang: string;
 };
 
 export const defaults: Store = {
-  javascript: "test('hello world');",
+  golang: "test('hello world');",
 };
