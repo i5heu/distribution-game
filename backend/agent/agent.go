@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -25,17 +26,17 @@ type Agent struct {
 	Chanel *chan Data
 }
 
-type agentCtx struct {
+type agentEnv struct {
 	info   Info
 	agents *map[uuid.UUID]Agent
 }
 
-func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid.UUID) {
+func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid.UUID, ctx context.Context) {
 	info := Info{
 		AgentID: agentData.NodeID,
 		Seeds:   seeds,
 	}
-	ctx := agentCtx{
+	agentEnv := agentEnv{
 		info:   info,
 		agents: agents,
 	}
@@ -45,33 +46,41 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 	i.Use(stdlib.Symbols)
 	i.Use(
 		map[string]map[string]reflect.Value{
-			"custom/custom": {
+			"dg/dg": {
 				"Data":    reflect.ValueOf((*Data)(nil)),
 				"Info":    reflect.ValueOf((*Info)(nil)),
 				"GetInfo": reflect.ValueOf(info.nodeInfo),
-				"Send":    reflect.ValueOf(ctx.nodeSend),
+				"Send":    reflect.ValueOf(agentEnv.nodeSend),
 			},
 		})
 
-	_, err := i.Eval(code)
+	_, err := i.EvalWithContext(ctx, code)
 	if err != nil {
 		fmt.Println("CompilerError:", err)
 	}
 
-	agentFuncReceive, err := i.Eval("Receive")
+	agentFuncReceive, err := i.EvalWithContext(ctx, "Receive")
 	if err != nil {
 		fmt.Println(err)
 	}
 	receive := agentFuncReceive.Interface().(func(Data))
 	go ReceiveWorker(*agentData.Chanel, receive)
 
-	agentFuncInit, err := i.Eval("Init")
+	agentFuncClose, err := i.Eval("Close")
+	if err != nil {
+		fmt.Println(err)
+	}
+	close := agentFuncClose.Interface().(func())
+
+	agentFuncInit, err := i.EvalWithContext(ctx, "Init")
 	if err != nil {
 		fmt.Println(err)
 	}
 	init := agentFuncInit.Interface().(func())
-	init()
+	go init()
 
+	<-ctx.Done()
+	close()
 }
 
 func ReceiveWorker(dataChan chan Data, receive func(Data)) {
@@ -98,12 +107,12 @@ func (i Info) nodeInfo() Info {
 	}
 }
 
-func (ctx agentCtx) nodeSend(target uuid.UUID, msg string) {
-	targetAgent := (*ctx.agents)[target]
+func (ae agentEnv) nodeSend(target uuid.UUID, msg string) {
+	targetAgent := (*ae.agents)[target]
 
 	if IsOpen(*targetAgent.Chanel) {
 		*targetAgent.Chanel <- Data{
-			SenderID: ctx.info.AgentID,
+			SenderID: ae.info.AgentID,
 			Msg:      msg,
 		}
 	}

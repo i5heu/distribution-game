@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -89,8 +90,10 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(data.Config.Timeout)*time.Second)
+
 	for _, agentData := range agents {
-		go agent.New(data.Code, agentData, &agents, []uuid.UUID{agents[simpleSeed].NodeID})
+		go agent.New(data.Code, agentData, &agents, []uuid.UUID{agents[simpleSeed].NodeID}, ctx)
 	}
 
 	// close channels after timeout
@@ -102,6 +105,7 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	fmt.Println("Timeout channels closed")
+	defer cancel()
 
 	runtime.GC()
 }
