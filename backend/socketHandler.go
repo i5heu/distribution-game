@@ -30,7 +30,6 @@ func (h *HandlerChanel) socketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	go h.messageCounter(conn)
-	go h.IsoStore.IsolateManager()
 
 	messageCount := -1
 

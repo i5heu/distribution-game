@@ -22,7 +22,7 @@ type Info struct {
 
 type Agent struct {
 	NodeID uuid.UUID `json:"node_id"`
-	Chanel chan Data
+	Chanel *chan Data
 }
 
 type agentCtx struct {
@@ -63,7 +63,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 		fmt.Println(err)
 	}
 	receive := agentFuncReceive.Interface().(func(Data))
-	go ReceiveWorker(agentData.Chanel, receive)
+	go ReceiveWorker(*agentData.Chanel, receive)
 
 	agentFuncInit, err := i.Eval("Init")
 	if err != nil {
@@ -99,8 +99,22 @@ func (i Info) nodeInfo() Info {
 }
 
 func (ctx agentCtx) nodeSend(target uuid.UUID, msg string) {
-	(*ctx.agents)[target].Chanel <- Data{
-		SenderID: ctx.info.AgentID,
-		Msg:      msg,
+	targetAgent := (*ctx.agents)[target]
+
+	if IsOpen(*targetAgent.Chanel) {
+		*targetAgent.Chanel <- Data{
+			SenderID: ctx.info.AgentID,
+			Msg:      msg,
+		}
 	}
+}
+
+func IsOpen(ch <-chan Data) bool {
+	select {
+	case <-ch:
+		return false
+	default:
+	}
+
+	return true
 }

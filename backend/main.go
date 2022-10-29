@@ -6,9 +6,10 @@ import (
 	"log"
 	"main/agent"
 	"main/helper"
-	"main/manager"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 
 type HandlerChanel struct {
 	MsgPerSecondChanel chan int
-	IsoStore           manager.IsolateStore
 }
 
 type Config struct {
@@ -46,7 +46,6 @@ func main() {
 
 	runSimulatorInst := &HandlerChanel{
 		MsgPerSecondChanel: make(chan int, 300),
-		IsoStore:           manager.NewIsolateStore(),
 	}
 
 	http.HandleFunc("/run", runSimulatorInst.runSimulator)
@@ -79,9 +78,10 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 
 	for i := 0; i < data.Config.Nodes; i++ {
 		agentId := uuid.New()
+		chanel := make(chan agent.Data, 100)
 		agents[agentId] = agent.Agent{
 			NodeID: agentId,
-			Chanel: make(chan agent.Data, 100),
+			Chanel: &chanel,
 		}
 
 		if simpleSeed == uuid.Nil {
@@ -94,13 +94,16 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// close channels after timeout
-	go func() {
-		time.Sleep(time.Duration(data.Config.Timeout) * time.Second)
-		fmt.Println("Timeout... closing channels")
-		for _, agentData := range agents {
-			close(agentData.Chanel)
+	time.Sleep(time.Duration(data.Config.Timeout) * time.Second)
+	fmt.Println("Timeout... closing channels")
+	for _, agentData := range agents {
+		if agent.IsOpen(*agentData.Chanel) {
+			close(*agentData.Chanel)
 		}
-	}()
+	}
+	fmt.Println("Timeout channels closed")
+
+	runtime.GC()
 }
 
 func redirectStderr(f *os.File) {
