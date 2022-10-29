@@ -3,14 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"main/agent"
 	"main/helper"
 	"main/manager"
 	"net/http"
 	"time"
-
-	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 type HandlerChanel struct {
@@ -63,17 +60,7 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 		helper.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"message": err.Error()})
 	}
 
-	wasmBytes, err := ioutil.ReadFile("../wasm/simple.wasm")
-	if err != nil {
-		fmt.Println("Failed to get File:", err)
-	}
-
-	engine := wasmer.NewEngine()
-	store := wasmer.NewStore(engine)
-
-	module, err := wasmer.NewModule(store, wasmBytes)
-
 	for i := 0; i < data.Config.Nodes; i++ {
-		go agent.New(module, store)
+		go agent.New(data.Code)
 	}
 }

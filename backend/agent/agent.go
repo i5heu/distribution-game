@@ -1,72 +1,52 @@
 package agent
 
 import (
-	"encoding/json"
 	"fmt"
+	"reflect"
 
-	wasmer "github.com/wasmerio/wasmer-go/wasmer"
+	"github.com/traefik/yaegi/interp"
+	"github.com/traefik/yaegi/stdlib"
 )
 
-func New(module *wasmer.Module, store *wasmer.Store) {
-
-	print := wasmer.NewFunction(
-		store,
-		wasmer.NewFunctionType(wasmer.NewValueTypes(wasmer.I32, wasmer.I32), wasmer.NewValueTypes()),
-		func(args []wasmer.Value) ([]wasmer.Value, error) {
-			return nil, nil
-		},
-	)
-
-	wasiEnv, _ := wasmer.NewWasiStateBuilder("wasi-program").
-		// Choose according to your actual situation
-		// Argument("--foo").
-		// Environment("ABC", "DEF").
-		// MapDirectory("./", ".").
-		Finalize()
-	importObject, err := wasiEnv.GenerateImportObject(store, module)
-	importObject.Register(
-		"env",
-		map[string]wasmer.IntoExtern{
-			"hostPrint": print,
-		},
-	)
-
-	instance, err := wasmer.NewInstance(module, importObject)
-
-	if err != nil {
-		panic(fmt.Sprintln("Failed to instantiate the module:", err))
-	}
-
-	addOne, err := instance.Exports.GetFunction("add_one")
-
-	if err != nil {
-		panic(fmt.Sprintln("Failed to get the `add_one` function:", err))
-	}
-
-	// // repeat a 1000 times
-	for i := 0; i < 100; i++ {
-		_, err := instance.Exports.GetMemory("memory")
-		if err != nil {
-			panic(fmt.Sprintln("Failed to get the `memory` export:", err))
-		}
-		values, err := addOne(2, 323)
-
-		if err != nil {
-			panic(fmt.Sprintln("Failed to call the `add_one` function:", err))
-		}
-
-		if values.(int32) != 4 {
-			fmt.Println("Expected 4, got", values)
-		}
-	}
-
-	instance.Close()
+type Data struct {
+	Msg string `json:"msg"`
 }
 
-func interfaceToString(data interface{}) (string, error) {
-	val, err := json.Marshal(data)
+func New(code string) {
+
+	fmt.Println("111")
+	i := interp.New(interp.Options{})
+
+	i.Use(stdlib.Symbols)
+	i.Use(
+		map[string]map[string]reflect.Value{
+			"custom/custom": {
+				"Data": reflect.ValueOf((*Data)(nil)),
+				"Send": reflect.ValueOf(nodeSend),
+			},
+		})
+
+	_, err := i.Eval(code)
 	if err != nil {
-		return "", err
+		fmt.Println("ERRRROLL", err)
 	}
-	return string(val), nil
+
+	fmt.Println("Done xxxxxxxx Done")
+
+	v, err := i.Eval("Receive")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	bar := v.Interface().(func(Data))
+
+	bar(Data{Msg: "Hello World"})
+}
+
+func nodeSend(data interface{}) {
+	fmt.Println("nodeSend", data)
+}
+
+func interfaceToString(data Data) {
+	fmt.Println("interfaceToString", data)
 }
