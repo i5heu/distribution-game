@@ -7,7 +7,7 @@ const store: Store = getStorageFromBrowser()
 
 const editorInstance = editor.create(document.getElementById("editor"), {
   value: store.golang,
-  language: "golang",
+  language: "go",
   theme: "vs-dark",
 });
 window.onresize = function () {
@@ -63,7 +63,6 @@ function getStorageFromBrowser() {
   return null;
 }
 
-
 document.getElementById("run").addEventListener("click", run);
 
 function run() {
@@ -91,8 +90,8 @@ function run() {
     });
 }
 
-var url = new URL('/ws', window.location.href);
-url.protocol = url.protocol.replace('http', 'ws');
+var url = new URL("/ws", window.location.href);
+url.protocol = url.protocol.replace("http", "ws");
 const socket = new WebSocket(url.href);
 
 socket.addEventListener("open", (event) => {
@@ -126,7 +125,7 @@ interface Config {
   timeout: number;
 }
 
-function getConfig() : Config | Error {
+function getConfig(): Config | Error {
   const configEl = document.getElementById("config");
 
   const config: Config = {
@@ -141,9 +140,10 @@ function getConfig() : Config | Error {
   for (const el of configEl.querySelectorAll("input")) {
     const key = el.getAttribute("data-key");
     const value = parseInt(el.value);
-    if (typeof value !== "number" || isNaN(value)) throw new Error("Invalid value");
+    if (typeof value !== "number" || isNaN(value))
+      throw new Error("Invalid value");
     if ((config as any)[key] === undefined) throw new Error("Invalid key");
-    
+
     (config as any)[key] = value;
   }
 
