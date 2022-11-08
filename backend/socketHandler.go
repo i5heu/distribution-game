@@ -9,10 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type MessageMessagePerSecond struct {
-	Type             string `json:"type"`
-	MessagePerSecond int    `json:"message_per_second"`
-}
 type Message struct {
 	ThreadID    uuid.UUID       `json:"thread_id"`
 	MessageType string          `json:"type"`
@@ -21,7 +17,7 @@ type Message struct {
 
 var upgrader = websocket.Upgrader{}
 
-func (h *HandlerChanel) socketHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Server) socketHandler(w http.ResponseWriter, r *http.Request) {
 	// Upgrade our raw HTTP connection to a websocket based one
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -29,7 +25,7 @@ func (h *HandlerChanel) socketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
-	go h.messageCounter(conn)
+	go h.stats.MessageStats(conn)
 
 	messageCount := -1
 

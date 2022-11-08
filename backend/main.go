@@ -7,6 +7,7 @@ import (
 	"log"
 	"main/agent"
 	"main/helper"
+	"main/statistics"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -16,10 +17,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
-type HandlerChanel struct {
-	MsgPerSecondChanel chan int
-}
 
 type Config struct {
 	Nodes      int `json:"nodes"`
@@ -36,6 +33,10 @@ type RunSimulator struct {
 	Code   string `json:"code"`
 }
 
+type Server struct {
+	stats statistics.Channels
+}
+
 func main() {
 	var err error
 	// get the file descriptor for the log file
@@ -45,8 +46,11 @@ func main() {
 	// }
 	redirectStderr(os.Stdout)
 
-	runSimulatorInst := &HandlerChanel{
-		MsgPerSecondChanel: make(chan int, 300),
+	statChan := statistics.Channels{
+		MsgPerSecondChanel: make(chan statistics.CountMsg, 100),
+	}
+	runSimulatorInst := &Server{
+		stats: statChan,
 	}
 
 	http.HandleFunc("/run", runSimulatorInst.runSimulator)
@@ -63,7 +67,7 @@ func main() {
 	}
 }
 
-func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
+func (h *Server) runSimulator(w http.ResponseWriter, r *http.Request) {
 	defer helper.TimeTrack(time.Now(), "Run Simulator")
 
 	decoder := json.NewDecoder(r.Body)
@@ -83,6 +87,7 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 		agents[agentId] = agent.Agent{
 			NodeID: agentId,
 			Chanel: chanel,
+			Stats:  h.stats,
 		}
 
 		if simpleSeed == uuid.Nil {

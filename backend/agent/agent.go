@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"main/statistics"
 	"reflect"
 	"time"
 
@@ -24,12 +25,14 @@ type Info struct {
 type Agent struct {
 	NodeID uuid.UUID `json:"node_id"`
 	Chanel chan Data
+	Stats  statistics.Channels
 }
 
 type agentEnv struct {
 	info   Info
 	agents *map[uuid.UUID]Agent
 	ctx    context.Context
+	stats  statistics.Channels
 }
 
 func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid.UUID, ctx context.Context) {
@@ -41,6 +44,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 		info:   info,
 		agents: agents,
 		ctx:    ctx,
+		stats:  agentData.Stats,
 	}
 
 	i := interp.New(interp.Options{})
@@ -66,7 +70,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 		fmt.Println(err)
 	}
 	receive := agentFuncReceive.Interface().(func(Data))
-	go ReceiveWorker(agentData.Chanel, receive, *agents)
+	go agentEnv.ReceiveWorker(agentData.Chanel, receive, *agents)
 
 	agentFuncClose, err := i.Eval("Close")
 	if err != nil {
@@ -85,7 +89,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 	close()
 }
 
-func ReceiveWorker(dataChan chan Data, receive func(Data), agents map[uuid.UUID]Agent) {
+func (ae agentEnv) ReceiveWorker(dataChan chan Data, receive func(Data), agents map[uuid.UUID]Agent) {
 	count := 0
 	unixTime := time.Now().Unix()
 
@@ -93,7 +97,10 @@ func ReceiveWorker(dataChan chan Data, receive func(Data), agents map[uuid.UUID]
 		count++
 
 		if unixTime < time.Now().Unix() {
-			fmt.Println("ReceiveWorker", count, "messages in queue", len(dataChan))
+			ae.stats.MsgPerSecondChanel <- statistics.CountMsg{
+				AgentID:      ae.info.AgentID,
+				MsgPerSecond: count,
+			}
 			count = 0
 			unixTime = time.Now().Unix()
 		}
