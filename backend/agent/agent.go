@@ -3,7 +3,9 @@ package agent
 import (
 	"context"
 	"fmt"
+	"main/helper"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,7 +66,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 		fmt.Println(err)
 	}
 	receive := agentFuncReceive.Interface().(func(Data))
-	go ReceiveWorker(*agentData.Chanel, receive)
+	go ReceiveWorker(*agentData.Chanel, receive, *agents)
 
 	agentFuncClose, err := i.Eval("Close")
 	if err != nil {
@@ -83,18 +85,44 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 	close()
 }
 
-func ReceiveWorker(dataChan chan Data, receive func(Data)) {
+func ReceiveWorker(dataChan chan Data, receive func(Data), agents map[uuid.UUID]Agent) {
 	count := 0
-	unixTime := time.Now().Unix()
+	// unixTime := time.Now().Unix()
+
+	missingAgents := make(map[uuid.UUID]int)
+	// fill missingAgents
+	for _, agent := range agents {
+		missingAgents[agent.NodeID] = 0
+	}
 
 	for data := range dataChan {
 		count++
 
-		if unixTime < time.Now().Unix() {
-			fmt.Println("ReceiveWorker", count)
-			count = 0
-			unixTime = time.Now().Unix()
-		}
+		msg, _ := strconv.ParseInt(data.Msg, 10, 64)
+
+		t := time.Unix(0, msg)
+
+		helper.TimeTrack(t, "Run Receive "+data.SenderID.String())
+
+		// if unixTime < time.Now().Unix() {
+		// 	time.Sleep(time.Second / 8)
+
+		// 	fmt.Println("\n\n\n", "ReceiveWorker", count, "messages in queue", len(dataChan))
+		// 	count = 0
+		// 	unixTime = time.Now().Unix()
+
+		// 	//check if all agents are still alive
+		// 	for _, agent := range agents {
+		// 		fmt.Println("Agent", agent.NodeID, " posted ", missingAgents[agent.NodeID], " messages")
+		// 	}
+
+		// 	fmt.Println("\n\n\n")
+
+		// 	//reset missingAgents
+		// 	for _, agent := range agents {
+		// 		missingAgents[agent.NodeID] = 0
+		// 	}
+		// }
 
 		receive(data)
 	}
@@ -108,6 +136,10 @@ func (i Info) nodeInfo() Info {
 }
 
 func (ae agentEnv) nodeSend(target uuid.UUID, msg string) {
+	defer helper.TimeTrack(time.Now(), "Run Target "+target.String())
+
+	time.Sleep(time.Second / 10)
+
 	targetAgent := (*ae.agents)[target]
 
 	if IsOpen(*targetAgent.Chanel) {
