@@ -82,7 +82,7 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 		chanel := make(chan agent.Data, 100)
 		agents[agentId] = agent.Agent{
 			NodeID: agentId,
-			Chanel: &chanel,
+			Chanel: chanel,
 		}
 
 		if simpleSeed == uuid.Nil {
@@ -98,14 +98,16 @@ func (h *HandlerChanel) runSimulator(w http.ResponseWriter, r *http.Request) {
 
 	// close channels after timeout
 	time.Sleep(time.Duration(data.Config.Timeout) * time.Second)
+	cancel()
+	time.Sleep(time.Second)
+
 	fmt.Println("Timeout... closing channels")
 	for _, agentData := range agents {
-		if agent.IsOpen(*agentData.Chanel) {
-			close(*agentData.Chanel)
+		if agent.IsOpen(agentData.Chanel) {
+			close(agentData.Chanel)
 		}
 	}
 	fmt.Println("Timeout channels closed")
-	defer cancel()
 
 	runtime.GC()
 }

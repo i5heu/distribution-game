@@ -3,9 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
-	"main/helper"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,12 +23,13 @@ type Info struct {
 
 type Agent struct {
 	NodeID uuid.UUID `json:"node_id"`
-	Chanel *chan Data
+	Chanel chan Data
 }
 
 type agentEnv struct {
 	info   Info
 	agents *map[uuid.UUID]Agent
+	ctx    context.Context
 }
 
 func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid.UUID, ctx context.Context) {
@@ -41,6 +40,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 	agentEnv := agentEnv{
 		info:   info,
 		agents: agents,
+		ctx:    ctx,
 	}
 
 	i := interp.New(interp.Options{})
@@ -66,7 +66,7 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 		fmt.Println(err)
 	}
 	receive := agentFuncReceive.Interface().(func(Data))
-	go ReceiveWorker(*agentData.Chanel, receive, *agents)
+	go ReceiveWorker(agentData.Chanel, receive, *agents)
 
 	agentFuncClose, err := i.Eval("Close")
 	if err != nil {
@@ -87,42 +87,16 @@ func New(code string, agentData Agent, agents *map[uuid.UUID]Agent, seeds []uuid
 
 func ReceiveWorker(dataChan chan Data, receive func(Data), agents map[uuid.UUID]Agent) {
 	count := 0
-	// unixTime := time.Now().Unix()
-
-	missingAgents := make(map[uuid.UUID]int)
-	// fill missingAgents
-	for _, agent := range agents {
-		missingAgents[agent.NodeID] = 0
-	}
+	unixTime := time.Now().Unix()
 
 	for data := range dataChan {
 		count++
 
-		msg, _ := strconv.ParseInt(data.Msg, 10, 64)
-
-		t := time.Unix(0, msg)
-
-		helper.TimeTrack(t, "Run Receive "+data.SenderID.String())
-
-		// if unixTime < time.Now().Unix() {
-		// 	time.Sleep(time.Second / 8)
-
-		// 	fmt.Println("\n\n\n", "ReceiveWorker", count, "messages in queue", len(dataChan))
-		// 	count = 0
-		// 	unixTime = time.Now().Unix()
-
-		// 	//check if all agents are still alive
-		// 	for _, agent := range agents {
-		// 		fmt.Println("Agent", agent.NodeID, " posted ", missingAgents[agent.NodeID], " messages")
-		// 	}
-
-		// 	fmt.Println("\n\n\n")
-
-		// 	//reset missingAgents
-		// 	for _, agent := range agents {
-		// 		missingAgents[agent.NodeID] = 0
-		// 	}
-		// }
+		if unixTime < time.Now().Unix() {
+			fmt.Println("ReceiveWorker", count, "messages in queue", len(dataChan))
+			count = 0
+			unixTime = time.Now().Unix()
+		}
 
 		receive(data)
 	}
@@ -136,18 +110,19 @@ func (i Info) nodeInfo() Info {
 }
 
 func (ae agentEnv) nodeSend(target uuid.UUID, msg string) {
-	defer helper.TimeTrack(time.Now(), "Run Target "+target.String())
-
-	time.Sleep(time.Second / 10)
+	select {
+	case <-ae.ctx.Done():
+		return
+	default:
+	}
 
 	targetAgent := (*ae.agents)[target]
 
-	if IsOpen(*targetAgent.Chanel) {
-		*targetAgent.Chanel <- Data{
-			SenderID: ae.info.AgentID,
-			Msg:      msg,
-		}
+	targetAgent.Chanel <- Data{
+		SenderID: ae.info.AgentID,
+		Msg:      msg,
 	}
+
 }
 
 func IsOpen(ch <-chan Data) bool {
